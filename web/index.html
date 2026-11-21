@@ -45,15 +45,32 @@
   <title>MomOS</title>
   <link rel="manifest" href="manifest.json">
 </head>
-<body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+<body style="margin:0;background:#FFF8F6;">
+  <style>
+    #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:#FFF8F6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;z-index:9999;transition:opacity .4s}
+    #splash .logo{width:88px;height:88px;border-radius:28px;display:flex;align-items:center;justify-content:center;
+      font-size:44px;background:linear-gradient(135deg,#E0698A,#7C6BD6);box-shadow:0 12px 30px rgba(124,107,214,.35);
+      animation:pulse 1.4s ease-in-out infinite}
+    #splash h1{margin:18px 0 4px;font-size:26px;color:#2D2640;font-weight:900}
+    #splash p{margin:0;color:#8A8399;font-size:15px}
+    #splash .bar{margin-top:22px;width:140px;height:6px;border-radius:6px;background:#F3DCE3;overflow:hidden}
+    #splash .bar i{display:block;width:40%;height:100%;border-radius:6px;background:#E0698A;animation:slide 1.1s ease-in-out infinite}
+    @keyframes pulse{50%{transform:scale(1.06)}}
+    @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+  </style>
+  <div id="splash">
+    <div class="logo">🌸</div>
+    <h1>MomOS</h1>
+    <p>Getting your day ready…</p>
+    <div class="bar"><i></i></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var s = document.getElementById('splash');
+      if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 450); }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

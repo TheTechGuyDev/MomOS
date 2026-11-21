@@ -20,7 +20,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build web --release --base-href /MomOS/
+      - run: flutter build web --release --base-href /MomOS/ --no-web-resources-cdn
       - run: cp build/web/index.html build/web/404.html
       - uses: actions/upload-pages-artifact@v3
         with:

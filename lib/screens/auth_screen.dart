@@ -33,7 +33,9 @@ class _AuthScreenState extends State<AuthScreen> {
           email: email,
           password: pass,
           data: {
-            'display_name': _name.text.trim().isEmpty ? 'Me' : _name.text.trim(),
+            'display_name': _name.text.trim().isEmpty
+                ? 'Me'
+                : _name.text.trim(),
             'role': _role,
           },
         );
@@ -65,22 +67,28 @@ class _AuthScreenState extends State<AuthScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    height: 88,
-                    width: 88,
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.secondary],
+                  Center(
+                    child: Container(
+                      height: 88,
+                      width: 88,
+                      alignment: Alignment.center,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                        ),
+                        borderRadius: BorderRadius.circular(28),
                       ),
-                      borderRadius: BorderRadius.circular(28),
+                      child: const Text('🌸', style: TextStyle(fontSize: 44)),
                     ),
-                    child: const Text('🌸', style: TextStyle(fontSize: 44)),
                   ),
-                  Text('MomOS',
-                      textAlign: TextAlign.center,
-                      style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  Text(
+                    'MomOS',
+                    textAlign: TextAlign.center,
+                    style: t.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     _signUp
@@ -107,7 +115,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         ButtonSegment(value: 'other', label: Text('Other')),
                       ],
                       selected: {_role},
-                      onSelectionChanged: (s) => setState(() => _role = s.first),
+                      onSelectionChanged: (s) =>
+                          setState(() => _role = s.first),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -129,7 +138,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       hintText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
-                        icon: Icon(_hide ? Icons.visibility_off : Icons.visibility),
+                        icon: Icon(
+                          _hide ? Icons.visibility_off : Icons.visibility,
+                        ),
                         onPressed: () => setState(() => _hide = !_hide),
                       ),
                     ),
@@ -141,15 +152,21 @@ class _AuthScreenState extends State<AuthScreen> {
                         ? const SizedBox(
                             height: 22,
                             width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
                         : Text(_signUp ? 'Create account' : 'Sign in'),
                   ),
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => setState(() => _signUp = !_signUp),
-                    child: Text(_signUp
-                        ? 'Already have an account? Sign in'
-                        : 'New here? Create an account'),
+                    child: Text(
+                      _signUp
+                          ? 'Already have an account? Sign in'
+                          : 'New here? Create an account',
+                    ),
                   ),
                 ],
               ),
