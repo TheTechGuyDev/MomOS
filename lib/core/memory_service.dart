@@ -108,7 +108,7 @@ class MemoryService {
       'shared': shared,
     };
     if (id == null) {
-      await supa.from('reminders').insert({...data, 'family_id': await Session.familyId()});
+      await supa.from('reminders').insert({...data, 'family_id': await AppSession.familyId()});
     } else {
       await supa.from('reminders').update(data).eq('id', id);
     }
@@ -122,7 +122,7 @@ class MemoryService {
   static Future<void> deleteReminder(String id) => supa.from('reminders').delete().eq('id', id);
 
   static Future<void> createReminders(List<String> titles, DateTime dueAt) async {
-    final fam = await Session.familyId();
+    final fam = await AppSession.familyId();
     await supa.from('reminders').insert([
       for (final t in titles)
         {'title': t, 'due_at': dueAt.toUtc().toIso8601String(), 'family_id': fam},
@@ -143,10 +143,10 @@ class MemoryService {
     String photoExt = 'jpg',
     bool removePhoto = false,
   }) async {
-    final fam = await Session.familyId();
+    final fam = await AppSession.familyId();
     String? path;
     if (photo != null) {
-      path = await Session.upload(
+      path = await AppSession.upload(
         'memory-media',
         'family/$fam/places/${DateTime.now().millisecondsSinceEpoch}.$photoExt',
         photo,
@@ -183,9 +183,9 @@ class MemoryService {
   static Future<void> addNote({String? body, Uint8List? audio, String audioExt = 'webm', int? seconds}) async {
     String? path;
     if (audio != null) {
-      path = await Session.upload(
+      path = await AppSession.upload(
         'memory-media',
-        '${Session.uid}/voice/${DateTime.now().millisecondsSinceEpoch}.$audioExt',
+        '${AppSession.uid}/voice/${DateTime.now().millisecondsSinceEpoch}.$audioExt',
         audio,
         audioExt,
       );

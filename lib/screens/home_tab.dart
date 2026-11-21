@@ -10,6 +10,7 @@ import '../core/theme.dart';
 import '../widgets/celebration.dart';
 import '../widgets/quest_sheet.dart';
 import 'achievements_screen.dart';
+import 'family/family_screen.dart';
 
 class HomeTab extends StatefulWidget {
   final Profile profile;
@@ -486,6 +487,32 @@ class _FamilyCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(children: [
+            for (final (i, e, l) in [(0, '📅', 'Calendar'), (1, '🧺', 'Chores'), (2, '🛒', 'Shopping')]) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: Material(
+                  color: AppColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => FamilyScreen(initialTab: i)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Column(children: [
+                        Text(e, style: const TextStyle(fontSize: 22)),
+                        const SizedBox(height: 2),
+                        Text(l, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ]),
           if (members.isNotEmpty) ...[
             const Divider(height: 24),
             ...members.map((m) {

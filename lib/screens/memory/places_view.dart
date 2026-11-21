@@ -186,7 +186,7 @@ class PlacesViewState extends State<PlacesView> {
                         Text(p.item, style: const TextStyle(fontWeight: FontWeight.w900)),
                         Text('📍 ${p.location}', style: const TextStyle(color: AppColors.ink)),
                         Text(
-                          'Updated ${timeAgo(p.updatedAt)}${p.updatedBy != null && p.updatedBy != Session.uid ? ' by family' : ''}',
+                          'Updated ${timeAgo(p.updatedAt)}${p.updatedBy != null && p.updatedBy != AppSession.uid ? ' by family' : ''}',
                           style: const TextStyle(fontSize: 12, color: AppColors.muted),
                         ),
                       ]),
@@ -218,7 +218,7 @@ class _SignedImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
-      future: Session.signedUrl('memory-media', path),
+      future: AppSession.signedUrl('memory-media', path),
       builder: (context, snap) => ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: SizedBox(

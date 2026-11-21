@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'profile_service.dart';
 
 /// Cached facts about the signed-in user, plus media helpers.
-class Session {
+class AppSession {
   static String? _familyId;
   static String? _userId;
   static final Map<String, (String, DateTime)> _urlCache = {};

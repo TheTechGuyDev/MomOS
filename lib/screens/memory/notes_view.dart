@@ -304,7 +304,7 @@ class _VoicePlayerState extends State<_VoicePlayer> {
         await _player.pause();
         setState(() => _playing = false);
       } else {
-        final url = await Session.signedUrl('memory-media', widget.path);
+        final url = await AppSession.signedUrl('memory-media', widget.path);
         await _player.play(UrlSource(url));
         setState(() => _playing = true);
       }

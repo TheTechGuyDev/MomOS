@@ -203,7 +203,7 @@ class RemindersViewState extends State<RemindersView> {
   }
 
   Widget _tile(Reminder r) {
-    final mine = r.userId == Session.uid;
+    final mine = r.userId == AppSession.uid;
     String sub;
     if (r.dueAt == null) {
       sub = 'No time set';
