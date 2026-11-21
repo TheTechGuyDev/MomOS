@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../core/profile_service.dart';
-import '../core/theme.dart';
+import '../learn/learn_tab.dart';
 import 'home_tab.dart';
 import 'kids/kids_tab.dart';
 import 'memory/memory_tab.dart';
@@ -25,7 +25,7 @@ class _HomeShellState extends State<HomeShell> {
       const KidsTab(),
       const MemoryTab(),
       const WellnessTab(),
-      const _ComingSoon(emoji: '🎓', title: 'Learn', phase: 7),
+      const LearnTab(),
     ];
     return Scaffold(
       body: SafeArea(child: IndexedStack(index: _index, children: pages)),
@@ -38,28 +38,6 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.psychology_outlined), selectedIcon: Icon(Icons.psychology), label: 'Memory'),
           NavigationDestination(icon: Icon(Icons.spa_outlined), selectedIcon: Icon(Icons.spa), label: 'Wellness'),
           NavigationDestination(icon: Icon(Icons.school_outlined), selectedIcon: Icon(Icons.school), label: 'Learn'),
-        ],
-      ),
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  final String emoji, title;
-  final int phase;
-  const _ComingSoon({required this.emoji, required this.title, required this.phase});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 56)),
-          const SizedBox(height: 12),
-          Text(title, style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
-          Text('Coming in Phase $phase', style: t.bodyMedium?.copyWith(color: AppColors.muted)),
         ],
       ),
     );
