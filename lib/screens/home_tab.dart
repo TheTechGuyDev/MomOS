@@ -11,10 +11,15 @@ import '../widgets/celebration.dart';
 import '../widgets/quest_sheet.dart';
 import 'achievements_screen.dart';
 import 'family/family_screen.dart';
+import 'memory/reminders_view.dart';
+import 'settings_screen.dart';
+import '../core/push.dart';
+import '../core/time_utils.dart';
 
 class HomeTab extends StatefulWidget {
   final Profile profile;
-  const HomeTab({super.key, required this.profile});
+  final VoidCallback? onProfileChanged;
+  const HomeTab({super.key, required this.profile, this.onProfileChanged});
   @override
   State<HomeTab> createState() => _HomeTabState();
 }
@@ -24,6 +29,7 @@ class _HomeTabState extends State<HomeTab> {
   Family? _family;
   List<Profile> _members = [];
   List<AppBadge> _badges = [];
+  Map<String, dynamic> _upcoming = const {};
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -50,12 +56,17 @@ class _HomeTabState extends State<HomeTab> {
       ]);
       final fam = results[1] as Family?;
       final members = fam == null ? <Profile>[] : await ProfileService.familyMembers(fam.id);
+      Map<String, dynamic> upcoming = const {};
+      try {
+        upcoming = Map<String, dynamic>.from(await supa.rpc('coming_up') as Map);
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _stats = results[0] as GameStats;
         _family = fam;
         _badges = results[2] as List<AppBadge>;
         _members = members;
+        _upcoming = upcoming;
         _loading = false;
         _error = null;
       });
@@ -120,7 +131,17 @@ class _HomeTabState extends State<HomeTab> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
-          _Header(greeting: _greeting, profile: p),
+          _Header(
+            greeting: _greeting,
+            profile: p,
+            onSettings: () async {
+              final changed = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(builder: (_) => SettingsScreen(profile: p)),
+              );
+              if (changed == true) widget.onProfileChanged?.call();
+              setState(() {});
+            },
+          ),
           if (_error != null) ...[
             const SizedBox(height: 16),
             Text(_error!, style: t.bodyMedium?.copyWith(color: Colors.red.shade400)),
@@ -170,6 +191,17 @@ class _HomeTabState extends State<HomeTab> {
               busy: _busy,
               onTap: () => _handleResult(GameService.checkIn),
             ),
+            if (PushService.status() == 'default' || PushService.status() == 'needs-install') ...[
+              const SizedBox(height: 14),
+              _NotifyNudge(onTap: () async {
+                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(profile: p)));
+                setState(() {});
+              }),
+            ],
+            const SizedBox(height: 14),
+            _ComingUp(data: _upcoming, onAdd: () async {
+              if (await showReminderSheet(context) == true) _load();
+            }),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -204,17 +236,21 @@ class _HomeTabState extends State<HomeTab> {
 class _Header extends StatelessWidget {
   final String greeting;
   final Profile profile;
-  const _Header({required this.greeting, required this.profile});
+  final VoidCallback onSettings;
+  const _Header({required this.greeting, required this.profile, required this.onSettings});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Row(
       children: [
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-          child: Text(profile.avatar, style: const TextStyle(fontSize: 24)),
+        GestureDetector(
+          onTap: onSettings,
+          child: CircleAvatar(
+            radius: 24,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+            child: Text(profile.avatar, style: const TextStyle(fontSize: 24)),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -227,9 +263,9 @@ class _Header extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Sign out',
-          onPressed: () => supa.auth.signOut(),
-          icon: const Icon(Icons.logout),
+          tooltip: 'Settings',
+          onPressed: onSettings,
+          icon: const Icon(Icons.settings_outlined),
         ),
       ],
     );
@@ -536,6 +572,95 @@ class _FamilyCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+
+class _NotifyNudge extends StatelessWidget {
+  final VoidCallback onTap;
+  const _NotifyNudge({required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.sky.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(children: [
+            Text('🔔', style: TextStyle(fontSize: 26)),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Turn on notifications so MomOS can remind you at the right time',
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+            Icon(Icons.chevron_right),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComingUp extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final VoidCallback onAdd;
+  const _ComingUp({required this.data, required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final reminders = List<Map<String, dynamic>>.from((data['reminders'] ?? []) as List);
+    final events = List<Map<String, dynamic>>.from((data['events'] ?? []) as List);
+    final now = DateTime.now();
+    String when(DateTime d) {
+      if (isSameDay(d, now)) return clock(d);
+      if (isSameDay(d, now.add(const Duration(days: 1)))) return 'Tomorrow ${clock(d)}';
+      return '${shortDate(d)} ${clock(d)}';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Text('Coming up', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+          const Spacer(),
+          TextButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_alarm, size: 18), label: const Text('Reminder')),
+        ]),
+        if (reminders.isEmpty && events.isEmpty)
+          Text('Nothing due soon. Enjoy the calm 🌿', style: t.bodyMedium?.copyWith(color: AppColors.muted)),
+        ...events.map((e) {
+          final d = DateTime.parse(e['starts_at'] as String).toLocal();
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(children: [
+              Text('${e['emoji'] ?? '📅'}', style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 10),
+              Expanded(child: Text('${e['title']}', style: const TextStyle(fontWeight: FontWeight.w700))),
+              Text((e['all_day'] ?? false) == true ? (isSameDay(d, now) ? 'Today' : shortDate(d)) : when(d),
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w700)),
+            ]),
+          );
+        }),
+        ...reminders.map((r) {
+          final d = DateTime.parse(r['due_at'] as String).toLocal();
+          final late = d.isBefore(now);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(children: [
+              Text(late ? '⚠️' : '🔔', style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 10),
+              Expanded(child: Text('${r['title']}', style: const TextStyle(fontWeight: FontWeight.w700))),
+              Text(when(d),
+                  style: TextStyle(fontSize: 12, color: late ? Colors.red.shade400 : AppColors.muted, fontWeight: FontWeight.w700)),
+            ]),
+          );
+        }),
+      ]),
     );
   }
 }

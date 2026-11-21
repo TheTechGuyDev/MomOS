@@ -83,10 +83,49 @@
   </div>
   <div id="diag" style="display:none;position:fixed;left:16px;right:16px;bottom:24px;z-index:10000;background:#fff;border:1px solid #F3DCE3;border-radius:16px;padding:14px;font:13px -apple-system,sans-serif;color:#2D2640;word-break:break-word;max-height:45vh;overflow:auto"></div>
   <script>
-    // Remove any old cached service worker so a fresh version always loads
+    // Service worker for push notifications. Remove any old Flutter worker.
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) {
+          var w = r.active || r.waiting || r.installing;
+          if (w && w.scriptURL.indexOf('push-sw.js') === -1) r.unregister();
+        });
+      }).finally(function () {
+        navigator.serviceWorker.register('push-sw.js').catch(function () {});
+      });
     }
+    function momosB64ToBytes(b64) {
+      var pad = '='.repeat((4 - b64.length % 4) % 4);
+      var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+      var out = new Uint8Array(raw.length);
+      for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+    // Returns: 'unsupported' | 'needs-install' | 'default' | 'granted' | 'denied'
+    window.momosPushStatus = function () {
+      var ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        return ios && !standalone ? 'needs-install' : 'unsupported';
+      }
+      return Notification.permission;
+    };
+    // Asks permission, subscribes, and returns the subscription as JSON text (or an error code).
+    window.momosEnablePush = async function (vapidKey) {
+      try {
+        if (window.momosPushStatus() === 'needs-install') return 'error:needs-install';
+        if (window.momosPushStatus() === 'unsupported') return 'error:unsupported';
+        var perm = await Notification.requestPermission();
+        if (perm !== 'granted') return 'error:denied';
+        var reg = await navigator.serviceWorker.register('push-sw.js');
+        await navigator.serviceWorker.ready;
+        var sub = await reg.pushManager.getSubscription();
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: momosB64ToBytes(vapidKey) });
+        return JSON.stringify(sub.toJSON());
+      } catch (e) {
+        return 'error:' + (e && e.message ? e.message : 'failed');
+      }
+    };
     var momosErrors = [];
     function momosShowDiag(title) {
       var d = document.getElementById('diag');

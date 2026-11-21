@@ -21,7 +21,7 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeTab(profile: widget.profile),
+      HomeTab(profile: widget.profile, onProfileChanged: widget.onProfileChanged),
       const KidsTab(),
       const MemoryTab(),
       const WellnessTab(),
