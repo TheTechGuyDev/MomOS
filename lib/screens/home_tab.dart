@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../core/app_events.dart';
 import '../core/game_service.dart';
 import '../core/levels.dart';
 import '../core/profile_service.dart';
@@ -29,6 +30,13 @@ class _HomeTabState extends State<HomeTab> {
   void initState() {
     super.initState();
     _load();
+    AppEvents.statsChanged.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    AppEvents.statsChanged.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {

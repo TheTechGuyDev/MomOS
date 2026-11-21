@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../core/profile_service.dart';
 import '../core/theme.dart';
 import 'home_tab.dart';
+import 'kids/kids_tab.dart';
 
 class HomeShell extends StatefulWidget {
   final Profile profile;
@@ -19,7 +20,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final pages = [
       HomeTab(profile: widget.profile),
-      const _ComingSoon(emoji: '👶', title: 'Kids', phase: 3),
+      const KidsTab(),
       const _ComingSoon(emoji: '🧠', title: 'Memory', phase: 4),
       const _ComingSoon(emoji: '🌿', title: 'Wellness', phase: 5),
       const _ComingSoon(emoji: '🎓', title: 'Learn', phase: 7),
