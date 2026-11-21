@@ -65,10 +65,34 @@
     <p>Getting your day ready…</p>
     <div class="bar"><i></i></div>
   </div>
+  <div id="diag" style="display:none;position:fixed;left:16px;right:16px;bottom:24px;z-index:10000;background:#fff;border:1px solid #F3DCE3;border-radius:16px;padding:14px;font:13px -apple-system,sans-serif;color:#2D2640;word-break:break-word;max-height:45vh;overflow:auto"></div>
   <script>
+    // Remove any old cached service worker so a fresh version always loads
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); });
+    }
+    var momosErrors = [];
+    function momosShowDiag(title) {
+      var d = document.getElementById('diag');
+      if (!d || !document.getElementById('splash')) return;
+      d.style.display = 'block';
+      d.innerHTML = '<b>' + title + '</b><br><span style="color:#8A8399">' +
+        navigator.userAgent + '</span><br><br>' +
+        (momosErrors.length ? momosErrors.map(function (e) { return '• ' + e; }).join('<br>') : 'No errors reported yet.') +
+        '<br><br><button onclick="location.reload()" style="background:#E0698A;color:#fff;border:0;border-radius:10px;padding:10px 16px;font-weight:800">Reload</button>';
+    }
+    window.addEventListener('error', function (e) {
+      momosErrors.push((e.message || 'Error') + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''));
+      momosShowDiag('Something went wrong while loading');
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) {
+      momosErrors.push('Promise: ' + (e.reason && (e.reason.message || e.reason)));
+      momosShowDiag('Something went wrong while loading');
+    });
+    setTimeout(function () { momosShowDiag('Still loading after 25 seconds'); }, 25000);
     window.addEventListener('flutter-first-frame', function () {
       var s = document.getElementById('splash');
-      if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 450); }
+      if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); var d = document.getElementById('diag'); if (d) d.remove(); }, 450); }
     });
   </script>
   <script src="flutter_bootstrap.js" async></script>
