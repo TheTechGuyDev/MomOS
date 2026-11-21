@@ -4,6 +4,7 @@ import '../core/profile_service.dart';
 import '../core/theme.dart';
 import 'home_tab.dart';
 import 'kids/kids_tab.dart';
+import 'memory/memory_tab.dart';
 
 class HomeShell extends StatefulWidget {
   final Profile profile;
@@ -21,7 +22,7 @@ class _HomeShellState extends State<HomeShell> {
     final pages = [
       HomeTab(profile: widget.profile),
       const KidsTab(),
-      const _ComingSoon(emoji: '🧠', title: 'Memory', phase: 4),
+      const MemoryTab(),
       const _ComingSoon(emoji: '🌿', title: 'Wellness', phase: 5),
       const _ComingSoon(emoji: '🎓', title: 'Learn', phase: 7),
     ];

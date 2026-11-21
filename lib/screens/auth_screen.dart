@@ -68,18 +68,12 @@ class _AuthScreenState extends State<AuthScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Center(
-                    child: Container(
-                      height: 88,
-                      width: 88,
-                      alignment: Alignment.center,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.secondary],
-                        ),
-                        borderRadius: BorderRadius.circular(28),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset('assets/logo.png', width: 96, height: 96),
                       ),
-                      child: const Text('🌸', style: TextStyle(fontSize: 44)),
                     ),
                   ),
                   Text(
