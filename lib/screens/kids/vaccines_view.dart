@@ -79,9 +79,12 @@ class _VaccinesViewState extends State<VaccinesView> {
     final birth = widget.child.birthDate;
     final now = DateTime.now();
     final done = vaccineSchedule.where((v) => _given.containsKey(v.key)).length;
-    final overdue = vaccineSchedule
-        .where((v) => !_given.containsKey(v.key) && birth.add(Duration(days: v.ageWeeks * 7)).isBefore(now))
-        .length;
+    final little = widget.child.isBaby;
+    final overdue = !little
+        ? 0
+        : vaccineSchedule
+            .where((v) => !_given.containsKey(v.key) && birth.add(Duration(days: v.ageWeeks * 7)).isBefore(now))
+            .length;
 
     final groups = <String, List<Vaccine>>{};
     for (final v in vaccineSchedule) {
@@ -114,7 +117,9 @@ class _VaccinesViewState extends State<VaccinesView> {
                     Text('$done of ${vaccineSchedule.length} recorded',
                         style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
                     Text(
-                      overdue == 0 ? 'Nothing overdue' : '$overdue past their due age, check the clinic card',
+                      !little
+                          ? 'Copy past vaccines from her clinic card'
+                          : (overdue == 0 ? 'Nothing overdue' : '$overdue past their due age, check the clinic card'),
                       style: t.bodySmall?.copyWith(color: overdue == 0 ? AppColors.mint : Colors.red.shade400, fontWeight: FontWeight.w700),
                     ),
                   ],
@@ -138,7 +143,7 @@ class _VaccinesViewState extends State<VaccinesView> {
               ),
               ...g.value.map((v) {
                 final given = _given[v.key];
-                final late = given == null && due.isBefore(now);
+                final late = little && given == null && due.isBefore(now);
                 return Card(
                   elevation: 0,
                   color: Colors.white,
@@ -150,7 +155,7 @@ class _VaccinesViewState extends State<VaccinesView> {
                     controlAffinity: ListTileControlAffinity.leading,
                     title: Text(v.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(
-                      given != null ? 'Given ${shortDate(given)}' : (late ? 'Due already' : 'Upcoming'),
+                      given != null ? 'Given ${shortDate(given)}' : (late ? 'Due already' : (little ? 'Upcoming' : 'Not recorded')),
                       style: TextStyle(color: late ? Colors.red.shade400 : AppColors.muted),
                     ),
                   ),

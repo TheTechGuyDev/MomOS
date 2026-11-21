@@ -23,7 +23,8 @@ class Child {
     return months;
   }
 
-  bool get isBaby => ageMonths < 24;
+  /// Under 3: breastfeeding, bottles and diapers apply.
+  bool get isBaby => ageMonths < 36;
 }
 
 class KidLog {
@@ -49,6 +50,7 @@ class KidLog {
     switch (kind) {
       case 'feed':
         final t = data['type'];
+        if (t == 'meal') return '🍽️';
         if (t == 'bottle') return '🍼';
         if (t == 'solids') return '🥣';
         return '🤱';
@@ -76,6 +78,15 @@ class KidLog {
             return 'Bottle${data['ml'] != null ? ' · ${data['ml']} ml' : ''}';
           case 'solids':
             return 'Solids${(data['food'] ?? '').toString().isNotEmpty ? ' · ${data['food']}' : ''}';
+          case 'meal':
+            final meal = const {
+                  'breakfast': 'Breakfast',
+                  'lunch': 'Lunch',
+                  'dinner': 'Dinner',
+                  'snack': 'Snack',
+                }[data['meal']] ??
+                'Meal';
+            return '$meal${(data['food'] ?? '').toString().isNotEmpty ? ' · ${data['food']}' : ''}';
         }
         return 'Feed';
       case 'sleep':

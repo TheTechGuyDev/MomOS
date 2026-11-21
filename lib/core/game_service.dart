@@ -1,4 +1,10 @@
+import 'dart:typed_data';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'profile_service.dart';
+import 'quests.dart';
+import 'time_utils.dart';
 
 class GameStats {
   final int xp;
@@ -42,6 +48,12 @@ class XpResult {
       );
 }
 
+class QuestEntry {
+  final String? note;
+  final String? photoUrl;
+  QuestEntry(this.note, this.photoUrl);
+}
+
 class AppBadge {
   final String key, name, emoji, description;
   AppBadge(this.key, this.name, this.emoji, this.description);
@@ -65,9 +77,45 @@ class GameService {
     return XpResult.fromMap(Map<String, dynamic>.from(res as Map));
   }
 
-  static Future<XpResult> completeQuest(String key) async {
-    final res = await supa.rpc('complete_quest', params: {'p_key': key});
+  /// Completes a quest with proof: a written note and/or a photo.
+  static Future<XpResult> completeQuest(
+    String key, {
+    String? note,
+    Uint8List? photoBytes,
+    String? photoExt,
+  }) async {
+    String? path;
+    if (photoBytes != null) {
+      final uid = supa.auth.currentUser!.id;
+      final ext = (photoExt ?? 'jpg').toLowerCase();
+      path = '$uid/${dateKey(DateTime.now())}_${key}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await supa.storage.from('quest-proofs').uploadBinary(
+            path,
+            photoBytes,
+            fileOptions: FileOptions(contentType: ext == 'png' ? 'image/png' : 'image/jpeg', upsert: true),
+          );
+    }
+    final res = await supa.rpc('complete_quest', params: {
+      'p_key': key,
+      'p_note': note,
+      'p_photo_path': path,
+    });
     return XpResult.fromMap(Map<String, dynamic>.from(res as Map));
+  }
+
+  static Future<QuestEntry?> questEntry(String key) async {
+    final row = await supa
+        .from('quest_entries')
+        .select()
+        .eq('quest_key', key)
+        .eq('day', dateKey(lagosToday()))
+        .maybeSingle();
+    if (row == null) return null;
+    String? url;
+    if (row['photo_path'] != null) {
+      url = await supa.storage.from('quest-proofs').createSignedUrl(row['photo_path'] as String, 3600);
+    }
+    return QuestEntry(row['note'] as String?, url);
   }
 
   static List<AppBadge>? _badgeCache;

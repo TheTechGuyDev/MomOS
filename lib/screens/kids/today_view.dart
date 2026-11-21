@@ -118,8 +118,10 @@ class _TodayViewState extends State<TodayView> {
     final t = Theme.of(context).textTheme;
     final c = widget.child;
     final isToday = isSameDay(_day, DateTime.now());
+    final little = c.isBaby;
     final feedsToday = _logs.where((l) => l.kind == 'feed').length;
     final diapersToday = _logs.where((l) => l.kind == 'diaper').length;
+    final healthToday = _logs.where((l) => l.kind == 'health').length;
     final sleepToday = _logs
         .where((l) => l.kind == 'sleep')
         .fold<Duration>(Duration.zero, (sum, l) => sum + ((l.endedAt ?? DateTime.now()).difference(l.startedAt)));
@@ -135,8 +137,8 @@ class _TodayViewState extends State<TodayView> {
             children: [
               Expanded(
                 child: _Summary(
-                  emoji: '🍼',
-                  title: 'Last feed',
+                  emoji: little ? '🍼' : '🍽️',
+                  title: little ? 'Last feed' : 'Last meal',
                   value: _lastFeed == null ? 'None yet' : timeAgo(_lastFeed!.startedAt),
                   sub: _lastFeed?.title,
                   color: AppColors.sky,
@@ -174,15 +176,24 @@ class _TodayViewState extends State<TodayView> {
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
             childAspectRatio: 1.05,
-            children: [
-              _Action('🤱', 'Feed', AppColors.sky, () => _after(showFeedSheet(context, c))),
-              _Action(_activeSleep != null ? '🌞' : '😴', _activeSleep != null ? 'Wake up' : 'Sleep',
-                  AppColors.secondary, _toggleSleep),
-              _Action('🧷', 'Diaper', AppColors.mint, () => _after(showDiaperSheet(context, c))),
-              _Action('📏', 'Growth', AppColors.sun, () => _after(showGrowthSheet(context, c))),
-              _Action('🌡️', 'Health', AppColors.primary, () => _after(showHealthSheet(context, c))),
-              _Action('🕰️', 'Past sleep', AppColors.secondary, () => _after(showSleepSheet(context, c))),
-            ],
+            children: little
+                ? [
+                    _Action('🤱', 'Feed', AppColors.sky, () => _after(showFeedSheet(context, c))),
+                    _Action(_activeSleep != null ? '🌞' : '😴', _activeSleep != null ? 'Wake up' : 'Sleep',
+                        AppColors.secondary, _toggleSleep),
+                    _Action('🧷', 'Diaper', AppColors.mint, () => _after(showDiaperSheet(context, c))),
+                    _Action('📏', 'Growth', AppColors.sun, () => _after(showGrowthSheet(context, c))),
+                    _Action('🌡️', 'Health', AppColors.primary, () => _after(showHealthSheet(context, c))),
+                    _Action('🕰️', 'Past sleep', AppColors.secondary, () => _after(showSleepSheet(context, c))),
+                  ]
+                : [
+                    _Action('🍽️', 'Meal', AppColors.sky, () => _after(showMealSheet(context, c))),
+                    _Action(_activeSleep != null ? '🌞' : '🌙', _activeSleep != null ? 'Woke up' : 'Bedtime',
+                        AppColors.secondary, _toggleSleep),
+                    _Action('🌡️', 'Health', AppColors.primary, () => _after(showHealthSheet(context, c))),
+                    _Action('📏', 'Growth', AppColors.sun, () => _after(showGrowthSheet(context, c))),
+                    _Action('🕰️', 'Past sleep', AppColors.mint, () => _after(showSleepSheet(context, c))),
+                  ],
           ),
           const SizedBox(height: 22),
           Row(
@@ -218,9 +229,9 @@ class _TodayViewState extends State<TodayView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _Count('$feedsToday', 'feeds'),
+                _Count('$feedsToday', little ? 'feeds' : 'meals'),
                 _Count(durationText(sleepToday), 'sleep'),
-                _Count('$diapersToday', 'diapers'),
+                little ? _Count('$diapersToday', 'diapers') : _Count('$healthToday', 'health notes'),
               ],
             ),
           ),

@@ -44,6 +44,23 @@
 
   <title>MomOS</title>
   <link rel="manifest" href="manifest.json">
+  <!-- Start the big downloads immediately, in parallel, instead of one after another -->
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preconnect" href="https://kpvyarzywvoasgsvgcqh.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script>
+    (function () {
+      var ua = navigator.userAgent;
+      var ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var chromium = !ios && !!window.chrome && /Chrome|Chromium|Edg/.test(ua);
+      var l = document.createElement('link');
+      l.rel = 'preload';
+      l.as = 'fetch';
+      l.crossOrigin = 'anonymous';
+      l.href = chromium ? 'canvaskit/chromium/canvaskit.wasm' : 'canvaskit/canvaskit.wasm';
+      document.head.appendChild(l);
+    })();
+  </script>
 </head>
 <body style="margin:0;background:#FFF8F6;">
   <style>

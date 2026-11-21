@@ -174,6 +174,60 @@ Future<bool?> showFeedSheet(BuildContext context, Child child) {
   });
 }
 
+Future<bool?> showMealSheet(BuildContext context, Child child) {
+  final h = DateTime.now().hour;
+  var meal = h < 11 ? 'breakfast' : (h < 16 ? 'lunch' : 'dinner');
+  final food = TextEditingController();
+  final note = TextEditingController();
+  var when = DateTime.now();
+  var saving = false;
+
+  return _sheet<bool>(context, 'Log a meal for ${child.name}', (ctx, setS) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ChoiceChips<String>(
+          options: const [
+            ('breakfast', '🍳 Breakfast'),
+            ('lunch', '🍛 Lunch'),
+            ('dinner', '🍲 Dinner'),
+            ('snack', '🍪 Snack'),
+          ],
+          value: meal,
+          onChanged: (v) => setS(() => meal = v),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: food,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(hintText: 'What did she eat? (e.g. jollof rice and plantain)'),
+        ),
+        const SizedBox(height: 12),
+        _WhenPicker(when: when, onChanged: (v) => setS(() => when = v)),
+        const SizedBox(height: 12),
+        TextField(controller: note, decoration: const InputDecoration(hintText: 'Note (optional), e.g. ate half')),
+        const SizedBox(height: 18),
+        FilledButton(
+          onPressed: saving
+              ? null
+              : () async {
+                  setS(() => saving = true);
+                  final ok = await _save(ctx, () => KidsService.addLog(
+                        child.id,
+                        'feed',
+                        startedAt: when,
+                        note: note.text,
+                        data: {'type': 'meal', 'meal': meal, 'food': food.text.trim()},
+                      ));
+                  if (!ok) setS(() => saving = false);
+                },
+          child: const Text('Save meal'),
+        ),
+      ],
+    );
+  });
+}
+
 Future<bool?> showDiaperSheet(BuildContext context, Child child) {
   var when = DateTime.now();
   var saving = false;

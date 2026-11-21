@@ -8,6 +8,7 @@ import '../core/profile_service.dart';
 import '../core/quests.dart';
 import '../core/theme.dart';
 import '../widgets/celebration.dart';
+import '../widgets/quest_sheet.dart';
 import 'achievements_screen.dart';
 
 class HomeTab extends StatefulWidget {
@@ -66,12 +67,13 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
-  Future<void> _handleResult(Future<XpResult> Function() action) async {
+  Future<void> _handleResult(Future<XpResult?> Function() action) async {
     if (_busy || _stats == null) return;
     setState(() => _busy = true);
     final oldLevel = LevelInfo.fromXp(_stats!.xp).level;
     try {
       final r = await action();
+      if (r == null) return;
       HapticFeedback.mediumImpact();
       await _load();
       if (!mounted) return;
@@ -177,13 +179,15 @@ class _HomeTabState extends State<HomeTab> {
               ],
             ),
             const SizedBox(height: 4),
-            Text('Finish all 4 for a +25 XP bonus',
+            Text('Tap a quest, then write it down or add a photo. Finish all 4 for +25 XP.',
                 style: t.bodySmall?.copyWith(color: AppColors.muted)),
             const SizedBox(height: 10),
             ...quests.map((q) => _QuestTile(
                   quest: q,
                   done: s.questsDoneToday.contains(q.key),
-                  onTap: () => _handleResult(() => GameService.completeQuest(q.key)),
+                  onTap: () => s.questsDoneToday.contains(q.key)
+                      ? showQuestEntrySheet(context, q)
+                      : _handleResult(() => showQuestProofSheet(context, q)),
                 )),
           ],
           if (_family != null) ...[
@@ -396,7 +400,7 @@ class _QuestTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: done ? null : onTap,
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
