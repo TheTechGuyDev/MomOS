@@ -1,4 +1,5 @@
 import 'app_events.dart';
+import 'offline.dart';
 import 'profile_service.dart';
 import 'session.dart';
 import 'time_utils.dart';
@@ -51,7 +52,10 @@ class ShoppingItem {
   final String? qty;
   final String category;
   final bool checked;
-  ShoppingItem(this.id, this.name, this.qty, this.category, this.checked);
+  final num? price;
+  final String? store;
+  final DateTime? checkedAt;
+  ShoppingItem(this.id, this.name, this.qty, this.category, this.checked, {this.price, this.store, this.checkedAt});
 
   factory ShoppingItem.fromMap(Map<String, dynamic> m) => ShoppingItem(
         m['id'] as String,
@@ -59,6 +63,9 @@ class ShoppingItem {
         m['qty'] as String?,
         (m['category'] ?? 'other') as String,
         (m['checked'] ?? false) as bool,
+        price: m['price'] as num?,
+        store: m['store'] as String?,
+        checkedAt: m['checked_at'] == null ? null : DateTime.parse(m['checked_at'] as String).toLocal(),
       );
 }
 
@@ -145,12 +152,42 @@ class FamilyService {
 
   // Shopping
   static Future<List<ShoppingItem>> shopping() async {
-    final rows = await supa.from('shopping_items').select().order('checked').order('created_at', ascending: false).limit(500);
+    final rows = await Offline.cachedList('shopping', () async {
+      final r = await supa
+          .from('shopping_items')
+          .select()
+          .eq('archived', false)
+          .order('checked')
+          .order('created_at', ascending: false)
+          .limit(500);
+      return r.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
+    });
     return rows.map<ShoppingItem>((r) => ShoppingItem.fromMap(r)).toList();
   }
 
+  /// Bought items (ticked), newest first, for history and reports.
+  static Future<List<ShoppingItem>> purchases({required DateTime since}) async {
+    final rows = await supa
+        .from('shopping_items')
+        .select()
+        .eq('checked', true)
+        .gte('checked_at', since.toUtc().toIso8601String())
+        .order('checked_at', ascending: false)
+        .limit(1000);
+    return rows.map<ShoppingItem>((r) => ShoppingItem.fromMap(r)).toList();
+  }
+
+  static Future<void> updateItem(String id, {num? price, String? qty, String? store, String? name}) async {
+    await supa.from('shopping_items').update({
+      'price': ?price,
+      'qty': ?qty,
+      'store': ?store,
+      'name': ?name,
+    }).eq('id', id);
+  }
+
   static Future<void> addItem(String name, String? qty, String category) async {
-    await supa.from('shopping_items').insert({
+    await Offline.write('shopping_items', 'insert', {
       'name': name.trim(),
       'qty': (qty ?? '').trim().isEmpty ? null : qty!.trim(),
       'category': category,
@@ -159,11 +196,12 @@ class FamilyService {
   }
 
   static Future<void> setChecked(String id, bool checked) =>
-      supa.from('shopping_items').update({'checked': checked}).eq('id', id);
+      Offline.write('shopping_items', 'update', {'checked': checked}, id: id);
 
   static Future<void> deleteItem(String id) => supa.from('shopping_items').delete().eq('id', id);
 
   static Future<void> clearChecked() async {
-    await supa.from('shopping_items').delete().eq('checked', true).eq('family_id', await AppSession.familyId());
+    // Keep bought items as history instead of deleting them
+    await supa.from('shopping_items').update({'archived': true}).eq('checked', true).eq('family_id', await AppSession.familyId());
   }
 }

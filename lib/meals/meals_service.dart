@@ -35,18 +35,22 @@ class MealsService {
   }
 
   /// Builds a varied week: no dish twice within 3 days, quick breakfasts on weekdays.
-  static MealPlan generate({int? seed}) {
+  static MealPlan generate({int? seed, Set<String> avoid = const {}}) {
     final rnd = Random(seed);
+    // Skip dishes that mention anything the family dislikes or is allergic to
+    final skip = avoid.map((a) => a.toLowerCase().trim()).where((a) => a.length > 2).toList();
+    bool ok(Dish d) => !skip.any((a) => d.name.toLowerCase().contains(a) || d.ingredients.any((i) => i.toLowerCase().contains(a)));
     final plan = <String, Map<String, String>>{};
     final recent = <String>[];
     for (var day = 0; day < 7; day++) {
       final today = <String, String>{};
       for (final slot in ['b', 'l', 'd']) {
-        var pool = dishes.where((d) => d.slots.contains(slot) && !recent.contains(d.key) && !today.containsValue(d.key)).toList();
+        var pool = dishes.where((d) => ok(d) && d.slots.contains(slot) && !recent.contains(d.key) && !today.containsValue(d.key)).toList();
         if (slot == 'b' && day < 5) {
           final quick = pool.where((d) => d.minutes <= 40).toList();
           if (quick.length >= 2) pool = quick;
         }
+        if (pool.isEmpty) pool = dishes.where((d) => ok(d) && d.slots.contains(slot)).toList();
         if (pool.isEmpty) pool = dishes.where((d) => d.slots.contains(slot)).toList();
         final pick = pool[rnd.nextInt(pool.length)];
         today[slot] = pick.key;
@@ -58,6 +62,21 @@ class MealsService {
       plan['$day'] = today;
     }
     return plan;
+  }
+
+  /// All ingredients for the planned dishes, with how many meals need each.
+  static Map<String, int> groceriesFor(MealPlan plan) {
+    final out = <String, int>{};
+    for (final day in plan.values) {
+      for (final key in day.values) {
+        final d = dishByKey(key);
+        if (d == null) continue;
+        for (final i in d.ingredients) {
+          out[i] = (out[i] ?? 0) + 1;
+        }
+      }
+    }
+    return out;
   }
 
   static Future<int> addToShopping(Dish d) async {

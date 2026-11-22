@@ -168,10 +168,33 @@ Deno.serve(async (req) => {
       : { data: [] };
     const nR = todays?.length ?? 0, nE = evs?.length ?? 0;
     const first = todays?.[0];
+    const extra: string[] = [];
+    if (p.family_id) {
+      const tomorrow = lagosDate(new Date(now.getTime() + 86400e3));
+      const [bl, hh, food, dates] = await Promise.all([
+        admin.from("bills").select("name").eq("family_id", p.family_id).lte("next_due", tomorrow).limit(5),
+        admin.from("household_tasks").select("title").eq("family_id", p.family_id).lte("next_due", today).limit(20),
+        admin.from("inventory_items").select("name").eq("family_id", p.family_id).gt("qty", 0).lte("expires_on", lagosDate(new Date(now.getTime() + 2 * 86400e3))).limit(5),
+        admin.from("important_dates").select("title,month,day,remind_days_before,user_id,shared").eq("family_id", p.family_id),
+      ]);
+      if (bl.data?.length) extra.push(`🧾 Bill due: ${bl.data.map((b) => b.name).join(", ")}`);
+      if (hh.data?.length) extra.push(`🧹 ${hh.data.length} household job${hh.data.length === 1 ? "" : "s"} for today`);
+      if (food.data?.length) extra.push(`⏳ Use soon: ${food.data.map((f) => f.name).join(", ")}`);
+      const [y, m, d] = today.split("-").map(Number);
+      const todayUtc = Date.UTC(y, m - 1, d);
+      for (const dt of dates.data ?? []) {
+        if (!dt.shared && dt.user_id !== p.id) continue;
+        let when = Date.UTC(y, dt.month - 1, dt.day);
+        if (when < todayUtc) when = Date.UTC(y + 1, dt.month - 1, dt.day);
+        const days = Math.round((when - todayUtc) / 86400e3);
+        if (days === 0) extra.push(`🎉 Today: ${dt.title}`);
+        else if (days <= (dt.remind_days_before ?? 1)) extra.push(`🎂 In ${days} day${days === 1 ? "" : "s"}: ${dt.title}`);
+      }
+    }
     const lines = [
       nR || nE ? `Today: ${nR} reminder${nR === 1 ? "" : "s"}${nE ? `, ${nE} family event${nE === 1 ? "" : "s"}` : ""}.` : "A clear day ahead. Maybe a short lesson or a walk?",
       first ? `First up: ${first.title} at ${time(first.due_at)}` : "",
-      "Tap to see your plan and today's quests 🎯",
+      ...extra.slice(0, 4),
     ].filter(Boolean);
     total += await sendTo([p.id], {
       title: `Good morning, ${(p.display_name ?? "").split(" ")[0] || "Mama"} ☀️`,

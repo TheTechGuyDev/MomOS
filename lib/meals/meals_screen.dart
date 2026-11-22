@@ -130,7 +130,8 @@ Future<void> showDishSheet(BuildContext context, Dish d, {VoidCallback? onSwap})
 }
 
 class MealsView extends StatefulWidget {
-  const MealsView({super.key});
+  final Set<String> avoid;
+  const MealsView({super.key, this.avoid = const {}});
   @override
   State<MealsView> createState() => _MealsViewState();
 }
@@ -160,7 +161,7 @@ class _MealsViewState extends State<MealsView> {
     if (_plan != null && !await confirmDelete(context, 'Make a new plan for this week?', message: 'The current plan will be replaced.')) {
       return;
     }
-    final p = MealsService.generate(seed: DateTime.now().millisecondsSinceEpoch);
+    final p = MealsService.generate(seed: DateTime.now().millisecondsSinceEpoch, avoid: widget.avoid);
     setState(() => _plan = p);
     try {
       await MealsService.save(_week, p);

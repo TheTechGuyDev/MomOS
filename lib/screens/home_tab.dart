@@ -13,6 +13,7 @@ import 'achievements_screen.dart';
 import 'family/family_screen.dart';
 import 'memory/reminders_view.dart';
 import 'settings_screen.dart';
+import '../home/today_sections.dart';
 import 'wellness/breathing_screen.dart';
 import '../meals/dishes.dart';
 import '../meals/meals_service.dart';
@@ -35,6 +36,7 @@ class _HomeTabState extends State<HomeTab> {
   List<AppBadge> _badges = [];
   Map<String, dynamic> _upcoming = const {};
   List<Map<String, dynamic>> _suggestions = [];
+  int _refreshTick = 0;
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -98,6 +100,7 @@ class _HomeTabState extends State<HomeTab> {
         _members = members;
         _upcoming = upcoming;
         _suggestions = suggestions;
+        _refreshTick++;
         _loading = false;
         _error = null;
       });
@@ -195,7 +198,30 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 16),
             Text(_error!, style: t.bodyMedium?.copyWith(color: Colors.red.shade400)),
           ],
+          const SizedBox(height: 4),
+          const TodayDateLine(),
+          const SizedBox(height: 14),
+          AiSummaryCard(onAsk: () => widget.onNavigate?.call(4)),
+          const SizedBox(height: 14),
+          QuickActions(onNavigate: (i) => widget.onNavigate?.call(i), onChanged: _load),
           if (s != null) ...[
+            if (PushService.status() == 'default' || PushService.status() == 'needs-install') ...[
+              const SizedBox(height: 14),
+              _NotifyNudge(onTap: () async {
+                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(profile: p)));
+                setState(() {});
+              }),
+            ],
+            if (_suggestions.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _NextForYou(items: _suggestions.take(4).toList(), onTap: _runSuggestion),
+            ],
+            const SizedBox(height: 14),
+            _ComingUp(data: _upcoming, onAdd: () async {
+              if (await showReminderSheet(context) == true) _load();
+            }),
+            const SizedBox(height: 14),
+            TodaySections(onNavigate: (i) => widget.onNavigate?.call(i), refresh: _refreshTick),
             const SizedBox(height: 20),
             _LevelCard(
               stats: s,
@@ -240,21 +266,6 @@ class _HomeTabState extends State<HomeTab> {
               busy: _busy,
               onTap: () => _handleResult(GameService.checkIn),
             ),
-            if (PushService.status() == 'default' || PushService.status() == 'needs-install') ...[
-              const SizedBox(height: 14),
-              _NotifyNudge(onTap: () async {
-                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(profile: p)));
-                setState(() {});
-              }),
-            ],
-            if (_suggestions.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _NextForYou(items: _suggestions.take(4).toList(), onTap: _runSuggestion),
-            ],
-            const SizedBox(height: 14),
-            _ComingUp(data: _upcoming, onAdd: () async {
-              if (await showReminderSheet(context) == true) _load();
-            }),
             const SizedBox(height: 24),
             Row(
               children: [

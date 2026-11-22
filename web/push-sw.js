@@ -2,8 +2,35 @@
 // Done / Snooze / Stop buttons, and tells an open app to sound the alarm.
 const FN = 'https://kpvyarzywvoasgsvgcqh.supabase.co/functions/v1/notify-action';
 
+const SHELL = 'momos-shell-v1';
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (event) => event.waitUntil((async () => {
+  const keys = await caches.keys();
+  await Promise.all(keys.filter((k) => k.startsWith('momos-shell-') && k !== SHELL).map((k) => caches.delete(k)));
+  await self.clients.claim();
+})()));
+
+// Offline: the app's own files are cached so MomOS opens without internet.
+// Pages and the loader are network-first; other files are served from cache and refreshed in the background.
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  const p = url.pathname;
+  const networkFirst = req.mode === 'navigate' || p.endsWith('/') || p.endsWith('.html') || p.endsWith('flutter_bootstrap.js') || p.endsWith('manifest.json');
+  if (networkFirst) {
+    event.respondWith(fetch(req).then((r) => {
+      if (r.ok) { const c = r.clone(); caches.open(SHELL).then((cache) => cache.put(req, c)); }
+      return r;
+    }).catch(() => caches.match(req).then((hit) => hit || caches.match(self.registration.scope))));
+    return;
+  }
+  event.respondWith(caches.open(SHELL).then(async (cache) => {
+    const hit = await cache.match(req);
+    const fresh = fetch(req).then((r) => { if (r.ok) cache.put(req, r.clone()); return r; }).catch(() => hit);
+    return hit || fresh;
+  }));
+});
 
 function optionsFor(d) {
   const base = {

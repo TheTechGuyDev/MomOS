@@ -8,6 +8,7 @@ import '../../core/profile_service.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../../core/time_utils.dart';
+import '../../family/shopping_view.dart';
 import '../../meals/meals_screen.dart';
 import '../../widgets/ui.dart';
 
@@ -21,8 +22,8 @@ class FamilyScreen extends StatefulWidget {
 class _FamilyScreenState extends State<FamilyScreen> {
   late int _tab = widget.initialTab;
   List<Profile> _members = [];
-  final _cal = GlobalKey<_CalendarViewState>();
-  final _chores = GlobalKey<_ChoresViewState>();
+  final _cal = GlobalKey<FamilyCalendarViewState>();
+  final _chores = GlobalKey<ChoresViewState>();
 
   @override
   void initState() {
@@ -73,9 +74,9 @@ class _FamilyScreenState extends State<FamilyScreen> {
         ),
         Expanded(
           child: IndexedStack(index: _tab, children: [
-            _CalendarView(key: _cal),
-            _ChoresView(key: _chores, members: _members),
-            const _ShoppingView(),
+            FamilyCalendarView(key: _cal),
+            ChoresView(key: _chores, members: _members),
+            const ShoppingView(),
             const MealsView(),
           ]),
         ),
@@ -177,13 +178,13 @@ Future<bool?> showEventSheet(BuildContext context, {FamilyEvent? existing, DateT
   });
 }
 
-class _CalendarView extends StatefulWidget {
-  const _CalendarView({super.key});
+class FamilyCalendarView extends StatefulWidget {
+  const FamilyCalendarView({super.key});
   @override
-  State<_CalendarView> createState() => _CalendarViewState();
+  State<FamilyCalendarView> createState() => FamilyCalendarViewState();
 }
 
-class _CalendarViewState extends State<_CalendarView> {
+class FamilyCalendarViewState extends State<FamilyCalendarView> {
   List<FamilyEvent> _events = [];
   bool _loading = true;
   DateTime _selected = DateTime.now();
@@ -383,14 +384,14 @@ Future<bool?> showChoreSheet(BuildContext context, List<Profile> members, {Chore
   });
 }
 
-class _ChoresView extends StatefulWidget {
+class ChoresView extends StatefulWidget {
   final List<Profile> members;
-  const _ChoresView({super.key, required this.members});
+  const ChoresView({super.key, required this.members});
   @override
-  State<_ChoresView> createState() => _ChoresViewState();
+  State<ChoresView> createState() => ChoresViewState();
 }
 
-class _ChoresViewState extends State<_ChoresView> {
+class ChoresViewState extends State<ChoresView> {
   List<Chore> _items = [];
   bool _loading = true;
   String _filter = 'all';
@@ -503,173 +504,6 @@ class _ChoresViewState extends State<_ChoresView> {
                 await FamilyService.deleteChore(c.id);
                 load();
               }
-            },
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-// ---------------- Shopping ----------------
-
-class _ShoppingView extends StatefulWidget {
-  const _ShoppingView();
-  @override
-  State<_ShoppingView> createState() => _ShoppingViewState();
-}
-
-class _ShoppingViewState extends State<_ShoppingView> {
-  final _name = TextEditingController();
-  final _qty = TextEditingController();
-  String _cat = 'food';
-  List<ShoppingItem> _items = [];
-  bool _loading = true;
-  RealtimeChannel? _channel;
-
-  @override
-  void initState() {
-    super.initState();
-    load();
-    _channel = supa
-        .channel('shopping-live')
-        .onPostgresChanges(event: PostgresChangeEvent.all, schema: 'public', table: 'shopping_items', callback: (_) => load())
-        .subscribe();
-  }
-
-  @override
-  void dispose() {
-    if (_channel != null) supa.removeChannel(_channel!);
-    super.dispose();
-  }
-
-  Future<void> load() async {
-    try {
-      final i = await FamilyService.shopping();
-      if (mounted) {
-        setState(() {
-          _items = i;
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _add() async {
-    if (_name.text.trim().isEmpty) return;
-    final n = _name.text, q = _qty.text;
-    _name.clear();
-    _qty.clear();
-    try {
-      await FamilyService.addItem(n, q, _cat);
-      load();
-    } catch (_) {
-      if (mounted) toast(context, 'Could not add. Please try again.');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
-    final open = _items.where((i) => !i.checked).toList();
-    final got = _items.where((i) => i.checked).toList();
-    final byCat = <String, List<ShoppingItem>>{};
-    for (final i in open) {
-      byCat.putIfAbsent(i.category, () => []).add(i);
-    }
-
-    return RefreshIndicator(
-      onRefresh: load,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-        children: [
-          WhiteCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    controller: _name,
-                    textCapitalization: TextCapitalization.sentences,
-                    onSubmitted: (_) => _add(),
-                    decoration: const InputDecoration(hintText: 'Add item (e.g. diapers)'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _qty,
-                    onSubmitted: (_) => _add(),
-                    decoration: const InputDecoration(hintText: 'Qty'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(onPressed: _add, icon: const Icon(Icons.add)),
-              ]),
-              const SizedBox(height: 10),
-              ChipChoices<String>(options: shoppingCategories, value: _cat, onChanged: (v) => setState(() => _cat = v)),
-            ]),
-          ),
-          const SizedBox(height: 4),
-          if (open.isEmpty && got.isEmpty)
-            const EmptyState(emoji: '🛒', title: 'Shopping list is empty', subtitle: 'Items you add show on your partner\'s phone instantly.'),
-          ...shoppingCategories.where((c) => byCat.containsKey(c.$1)).expand((c) => [
-                SectionTitle(c.$2),
-                ...byCat[c.$1]!.map(_tile),
-              ]),
-          if (got.isNotEmpty) ...[
-            SectionTitle(
-              '✅ In the basket (${got.length})',
-              trailing: TextButton(
-                onPressed: () async {
-                  await FamilyService.clearChecked();
-                  load();
-                },
-                child: const Text('Clear'),
-              ),
-            ),
-            ...got.map(_tile),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _tile(ShoppingItem i) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: WhiteCard(
-        padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
-        onTap: () async {
-          await FamilyService.setChecked(i.id, !i.checked);
-          load();
-        },
-        child: Row(children: [
-          Checkbox(
-            value: i.checked,
-            shape: const CircleBorder(),
-            onChanged: (_) async {
-              await FamilyService.setChecked(i.id, !i.checked);
-              load();
-            },
-          ),
-          Expanded(
-            child: Text(
-              i.qty == null ? i.name : '${i.name}  ·  ${i.qty}',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                decoration: i.checked ? TextDecoration.lineThrough : null,
-                color: i.checked ? AppColors.muted : AppColors.ink,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
-            onPressed: () async {
-              await FamilyService.deleteItem(i.id);
-              load();
             },
           ),
         ]),

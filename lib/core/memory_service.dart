@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'app_events.dart';
+import 'offline.dart';
 import 'profile_service.dart';
 import 'session.dart';
 
@@ -86,12 +87,15 @@ class Note {
 class MemoryService {
   // Reminders
   static Future<List<Reminder>> reminders() async {
-    final rows = await supa
-        .from('reminders')
-        .select()
-        .or('done.eq.false,done_at.gte.${DateTime.now().subtract(const Duration(days: 7)).toUtc().toIso8601String()}')
-        .order('due_at', nullsFirst: false)
-        .limit(300);
+    final rows = await Offline.cachedList('reminders', () async {
+      final r = await supa
+          .from('reminders')
+          .select()
+          .or('done.eq.false,done_at.gte.${DateTime.now().subtract(const Duration(days: 7)).toUtc().toIso8601String()}')
+          .order('due_at', nullsFirst: false)
+          .limit(300);
+      return r.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e)).toList();
+    });
     return rows.map<Reminder>((r) => Reminder.fromMap(r)).toList();
   }
 
