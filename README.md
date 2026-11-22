@@ -11,11 +11,14 @@ An all-in-one daily companion for mum, built with Flutter (installable web app) 
 - **Wellness**: mood check-ins, water, her sleep, guided breathing, gratitude journal
 - **Family hub**: shared calendar, chores with assignees, live shopping list
 - **Learn**: 5 Data Analysis tracks (23 lessons + quizzes), SQL Lab, Sheet Lab, AI tutor, certificates, portfolio
-- **Notifications**: web push for due reminders and family events (pg_cron → Edge Function)
+- **Notifications**: Gentle / Important / Alarm levels, Done & Snooze buttons, alarms re-ring until stopped, quiet hours, morning summary, "next up" lines (pg_cron → Edge Function)
+- **What's next for you**: suggestions on Home based on the week's activity
+- **Meal timetable**: weekly Nigerian breakfast/lunch/dinner plan with photos (Wikipedia), recipes, swap, add ingredients to shopping list
+- **Symptom checker**: for mum, baby or child; urgency decided by fixed safety rules, AI adds explanations (no doses)
 
 ## Backend
 - SQL migrations: `supabase/migrations/` (Row Level Security on every table)
-- Edge Functions: `supabase/functions/ai-tutor`, `supabase/functions/send-notifications`
+- Edge Functions: `ai-tutor`, `send-notifications`, `notify-action`, `symptom-check` (in `supabase/functions/`)
 - Function secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`, and `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` for the tutor
 
 ## Deploy

@@ -14,8 +14,10 @@ class Reminder {
   final bool shared;
   final bool done;
   final DateTime? doneAt;
+  final String level;
 
   Reminder({
+    this.level = 'gentle',
     required this.id,
     required this.userId,
     required this.title,
@@ -37,6 +39,7 @@ class Reminder {
         shared: (m['shared'] ?? false) as bool,
         done: (m['done'] ?? false) as bool,
         doneAt: m['done_at'] == null ? null : DateTime.parse(m['done_at'] as String).toLocal(),
+        level: (m['level'] ?? 'gentle') as String,
       );
 
   bool get overdue => !done && dueAt != null && dueAt!.isBefore(DateTime.now());
@@ -99,8 +102,10 @@ class MemoryService {
     DateTime? dueAt,
     String repeat = 'none',
     bool shared = false,
+    String level = 'gentle',
   }) async {
     final data = {
+      'level': level,
       'title': title.trim(),
       'notes': (notes ?? '').trim().isEmpty ? null : notes!.trim(),
       'due_at': dueAt?.toUtc().toIso8601String(),
@@ -120,6 +125,23 @@ class MemoryService {
   }
 
   static Future<void> deleteReminder(String id) => supa.from('reminders').delete().eq('id', id);
+
+  static Future<void> snooze(String id, Duration d) => supa
+      .from('reminders')
+      .update({'due_at': DateTime.now().add(d).toUtc().toIso8601String()}).eq('id', id);
+
+  static Future<void> stopAlarm(String id) =>
+      supa.from('reminders').update({'alarm_acked': true, 'notified_at': DateTime.now().toUtc().toIso8601String()}).eq('id', id);
+
+  static Future<List<Map<String, dynamic>>> dueNow() async {
+    final r = await supa.rpc('due_now');
+    return List<Map<String, dynamic>>.from((r as List).map((e) => Map<String, dynamic>.from(e as Map)));
+  }
+
+  static Future<Map<String, dynamic>?> nextUp(DateTime after) async {
+    final r = await supa.rpc('next_up', params: {'p_after': after.toUtc().toIso8601String()});
+    return r == null ? null : Map<String, dynamic>.from(r as Map);
+  }
 
   static Future<void> createReminders(List<String> titles, DateTime dueAt) async {
     final fam = await AppSession.familyId();

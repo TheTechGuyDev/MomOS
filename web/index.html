@@ -94,6 +94,17 @@
         navigator.serviceWorker.register('push-sw.js').catch(function () {});
       });
     }
+    // Messages from the service worker are queued until the app is ready to read them
+    window.momosInbox = [];
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && (e.data.type === 'momos-push' || e.data.type === 'momos-open')) {
+          window.momosInbox.push(JSON.stringify(e.data));
+        }
+      });
+    }
+    window.momosTakeInbox = function () { var m = window.momosInbox; window.momosInbox = []; return JSON.stringify(m); };
+    window.momosVibrate = function (ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
     function momosB64ToBytes(b64) {
       var pad = '='.repeat((4 - b64.length % 4) % 4);
       var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));

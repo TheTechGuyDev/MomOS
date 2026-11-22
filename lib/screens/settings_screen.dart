@@ -20,6 +20,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late String _avatar = widget.profile.avatar;
   late String _role = widget.profile.role;
   String _push = PushService.status();
+  late int _quietStart = widget.profile.quietStart;
+  late int _quietEnd = widget.profile.quietEnd;
+  late bool _summary = widget.profile.morningSummary;
+  late int _summaryHour = widget.profile.summaryHour;
+
+  String _h(int h) => '${h % 12 == 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}';
+
+  Future<void> _saveNotifyPrefs() async {
+    try {
+      await supa.from('profiles').update({
+        'quiet_start': _quietStart,
+        'quiet_end': _quietEnd,
+        'morning_summary': _summary,
+        'summary_hour': _summaryHour,
+      }).eq('id', AppSession.uid);
+      _changed = true;
+    } catch (_) {
+      if (mounted) toast(context, 'Could not save. Please try again.');
+    }
+  }
+
+  Future<void> _pickHour(int current, ValueChanged<int> onPick, {int min = 0, int max = 23}) async {
+    final h = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: SizedBox(
+          height: 320,
+          child: ListView(children: [
+            for (var i = min; i <= max; i++)
+              ListTile(
+                title: Text(_h(i), style: TextStyle(fontWeight: i == current ? FontWeight.w900 : FontWeight.w500)),
+                trailing: i == current ? const Icon(Icons.check, color: AppColors.primary) : null,
+                onTap: () => Navigator.pop(ctx, i),
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (h != null) {
+      onPick(h);
+      _saveNotifyPrefs();
+    }
+  }
   bool _saving = false;
   bool _pushBusy = false;
   bool _changed = false;
@@ -72,10 +116,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _test() async {
+  Future<void> _test([String level = 'gentle']) async {
     setState(() => _pushBusy = true);
     try {
-      final n = await PushService.sendTest();
+      final n = await PushService.sendTest(level: level);
       if (mounted) toast(context, n > 0 ? 'Test sent. Check your notifications.' : 'No device is set up yet. Tap "Turn on" first.');
     } catch (_) {
       if (mounted) toast(context, 'Could not send a test.');
@@ -178,17 +222,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Text(pushOn ? 'Re-connect this device' : 'Turn on'),
                       ),
                     ),
-                    if (pushOn) ...[
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(54)),
-                          onPressed: _pushBusy ? null : _test,
-                          child: const Text('Send a test'),
-                        ),
-                      ),
-                    ],
                   ]),
+                if (pushOn) ...[
+                  const SizedBox(height: 12),
+                  const Text('Try each type:', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    ActionChip(label: const Text('🔔 Gentle'), onPressed: _pushBusy ? null : () => _test('gentle')),
+                    ActionChip(label: const Text('⚠️ Important'), onPressed: _pushBusy ? null : () => _test('important')),
+                    ActionChip(label: const Text('⏰ Alarm'), onPressed: _pushBusy ? null : () => _test('alarm')),
+                  ]),
+                ],
+                const Divider(height: 28),
+                Row(children: [
+                  const Text('🌙', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Quiet hours', style: TextStyle(fontWeight: FontWeight.w900)),
+                      Text('Only ⏰ Alarms come through', style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                    ]),
+                  ),
+                  TextButton(
+                    onPressed: () => _pickHour(_quietStart, (h) => setState(() => _quietStart = h)),
+                    child: Text(_h(_quietStart)),
+                  ),
+                  const Text('to'),
+                  TextButton(
+                    onPressed: () => _pickHour(_quietEnd, (h) => setState(() => _quietEnd = h)),
+                    child: Text(_h(_quietEnd)),
+                  ),
+                ]),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _summary,
+                  onChanged: (v) {
+                    setState(() => _summary = v);
+                    _saveNotifyPrefs();
+                  },
+                  secondary: const Text('☀️', style: TextStyle(fontSize: 22)),
+                  title: const Text('Morning summary', style: TextStyle(fontWeight: FontWeight.w900)),
+                  subtitle: Text('One message at ${_h(_summaryHour)} with your plan for the day'),
+                ),
+                if (_summary)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => _pickHour(_summaryHour, (h) => setState(() => _summaryHour = h), min: 4, max: 11),
+                      icon: const Icon(Icons.schedule, size: 18),
+                      label: Text('Change time (${_h(_summaryHour)})'),
+                    ),
+                  ),
               ]),
             ),
             const SizedBox(height: 14),

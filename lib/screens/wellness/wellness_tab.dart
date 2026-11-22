@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../core/time_utils.dart';
 import '../../core/wellness_service.dart';
 import '../../widgets/ui.dart';
+import '../../health/symptom_checker_screen.dart';
 import 'breathing_screen.dart';
 
 class WellnessTab extends StatefulWidget {
@@ -83,6 +84,23 @@ class _WellnessTabState extends State<WellnessTab> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const SizedBox(height: 8),
+              WhiteCard(
+                color: const Color(0xFFEFF7FF),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SymptomCheckerScreen())),
+                child: const Row(children: [
+                  Text('🩺', style: TextStyle(fontSize: 30)),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Symptom checker', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      Text('For you, the baby or big sister. Get advice on what to do next',
+                          style: TextStyle(fontSize: 12, color: AppColors.muted)),
+                    ]),
+                  ),
+                  Icon(Icons.chevron_right),
+                ]),
+              ),
+              const SizedBox(height: 12),
               // Mood
               WhiteCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

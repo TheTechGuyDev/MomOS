@@ -73,21 +73,40 @@ Deno.serve(async (req) => {
       if (!r.ok) { console.error(d); return json({ error: "The tutor is busy right now. Please try again." }, 502); }
       reply = (d.content ?? []).map((c: { text?: string }) => c.text ?? "").join("").trim();
     } else {
-      const model = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: msgs.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-          generationConfig: { maxOutputTokens: 800 },
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok) { console.error(d); return json({ error: "The tutor is busy right now. Please try again." }, 502); }
-      reply = (d.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("").trim();
+      // Fastest current models first (measured), each with a timeout
+      const models = [Deno.env.get("GEMINI_MODEL"), "gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
+        .filter((m): m is string => !!m);
+      for (const model of models) {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 20000);
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`, {
+            method: "POST",
+            signal: ctl.signal,
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: msgs.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+              generationConfig: { maxOutputTokens: 1200 },
+            }),
+          });
+          const d = await r.json();
+          if (r.ok) {
+            reply = (d.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? "").join("").trim();
+            if (reply) break;
+          } else {
+            console.error("gemini", model, d.error?.message);
+          }
+        } catch (e) {
+          console.error("gemini", model, String(e));
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      if (!reply) return json({ error: "The tutor is busy right now. Please try again in a minute." }, 502);
     }
 
+    reply = reply.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^\s*[*-]\s+/gm, "• ").replace(/^#+\s*/gm, "").replace(/`([^`]+)`/g, "$1");
     await admin.from("tutor_usage").insert({ user_id: user.id });
     return json({ reply: reply || "Sorry, I couldn't think of an answer. Try asking another way." });
   } catch (e) {

@@ -12,6 +12,7 @@ Future<bool?> showReminderSheet(BuildContext context, {Reminder? existing, Strin
   DateTime? due = existing?.dueAt ?? _defaultDue();
   var repeat = existing?.repeat ?? 'none';
   var shared = existing?.shared ?? false;
+  var level = existing?.level ?? 'gentle';
   var saving = false;
 
   return showAppSheet<bool>(context, existing == null ? 'New reminder' : 'Edit reminder', (ctx, setS) {
@@ -69,6 +70,44 @@ Future<bool?> showReminderSheet(BuildContext context, {Reminder? existing, Strin
             onChanged: (v) => setS(() => repeat = v),
           ),
         ],
+        if (due != null) ...[
+          const SizedBox(height: 14),
+          const Text('How should I remind you?', style: TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          for (final (k, e, l, d) in const [
+            ('gentle', '🔔', 'Gentle', 'One soft sound'),
+            ('important', '⚠️', 'Important', 'Vibrates and stays on screen until you tap it'),
+            ('alarm', '⏰', 'Alarm', 'Keeps ringing until you tap Stop'),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Material(
+                color: level == k ? AppColors.primary.withValues(alpha: 0.12) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: level == k ? AppColors.primary : const Color(0xFFF0E6E9)),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => setS(() => level = k),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(children: [
+                      Text(e, style: const TextStyle(fontSize: 22)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(l, style: const TextStyle(fontWeight: FontWeight.w900)),
+                          Text(d, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                        ]),
+                      ),
+                      if (level == k) const Icon(Icons.check_circle, color: AppColors.primary),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+        ],
         const SizedBox(height: 6),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -92,6 +131,7 @@ Future<bool?> showReminderSheet(BuildContext context, {Reminder? existing, Strin
                       dueAt: due,
                       repeat: repeat,
                       shared: shared,
+                      level: level,
                     );
                     if (ctx.mounted) Navigator.pop(ctx, true);
                   } catch (_) {
@@ -242,13 +282,18 @@ class RemindersViewState extends State<RemindersView> {
                 ),
               ),
               const SizedBox(height: 2),
-              Row(children: [
+              Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text(sub,
                     style: TextStyle(
                       fontSize: 12,
                       color: r.overdue ? Colors.red.shade400 : AppColors.muted,
                       fontWeight: r.overdue ? FontWeight.w800 : FontWeight.w500,
                     )),
+                if (r.level != 'gentle') ...[
+                  const SizedBox(width: 6),
+                  Text(r.level == 'alarm' ? '⏰ alarm' : '⚠️ important',
+                      style: TextStyle(fontSize: 12, color: r.level == 'alarm' ? AppColors.primary : Colors.orange.shade700, fontWeight: FontWeight.w700)),
+                ],
                 if (r.repeat != 'none') ...[
                   const SizedBox(width: 6),
                   const Icon(Icons.repeat, size: 14, color: AppColors.secondary),

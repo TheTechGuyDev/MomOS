@@ -11,6 +11,12 @@ external JSString _status();
 @JS('momosEnablePush')
 external JSPromise<JSString> _enable(JSString vapidKey);
 
+@JS('momosTakeInbox')
+external JSString _takeInbox();
+
+@JS('momosVibrate')
+external void _vibrate(JSAny pattern);
+
 /// Web push notifications for reminders and family events.
 class PushService {
   static const vapidPublicKey =
@@ -54,8 +60,24 @@ class PushService {
     return null;
   }
 
-  static Future<int> sendTest() async {
-    final r = await supa.functions.invoke('send-notifications', body: {'test': true});
+  /// Messages the service worker sent while the app was open.
+  static List<Map<String, dynamic>> takeInbox() {
+    try {
+      final list = jsonDecode(_takeInbox().toDart) as List;
+      return list.map((e) => Map<String, dynamic>.from(jsonDecode(e as String) as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static void vibrate(List<int> pattern) {
+    try {
+      _vibrate(pattern.map((e) => e.toJS).toList().toJS);
+    } catch (_) {}
+  }
+
+  static Future<int> sendTest({String level = 'gentle'}) async {
+    final r = await supa.functions.invoke('send-notifications', body: {'test': true, 'level': level});
     final d = r.data is String ? jsonDecode(r.data as String) : r.data;
     return (d['sent'] ?? 0) as int;
   }

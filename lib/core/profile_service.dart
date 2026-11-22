@@ -9,8 +9,16 @@ class Profile {
   final String? familyId;
   final String avatar;
   final int xp;
+  final int quietStart;
+  final int quietEnd;
+  final bool morningSummary;
+  final int summaryHour;
 
   Profile({
+    this.quietStart = 22,
+    this.quietEnd = 6,
+    this.morningSummary = true,
+    this.summaryHour = 7,
     required this.id,
     required this.displayName,
     required this.role,
@@ -26,6 +34,10 @@ class Profile {
         familyId: m['family_id'] as String?,
         avatar: (m['avatar_emoji'] ?? '🌸') as String,
         xp: (m['xp'] ?? 0) as int,
+        quietStart: (m['quiet_start'] ?? 22) as int,
+        quietEnd: (m['quiet_end'] ?? 6) as int,
+        morningSummary: (m['morning_summary'] ?? true) as bool,
+        summaryHour: (m['summary_hour'] ?? 7) as int,
       );
 }
 

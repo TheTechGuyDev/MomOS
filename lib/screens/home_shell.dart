@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../core/profile_service.dart';
+import '../core/alarm_service.dart';
 import '../learn/learn_tab.dart';
 import 'home_tab.dart';
 import 'kids/kids_tab.dart';
@@ -21,14 +22,18 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeTab(profile: widget.profile, onProfileChanged: widget.onProfileChanged),
+      HomeTab(
+        profile: widget.profile,
+        onProfileChanged: widget.onProfileChanged,
+        onNavigate: (i) => setState(() => _index = i),
+      ),
       const KidsTab(),
       const MemoryTab(),
       const WellnessTab(),
       const LearnTab(),
     ];
     return Scaffold(
-      body: SafeArea(child: IndexedStack(index: _index, children: pages)),
+      body: AlarmWatcher(child: SafeArea(child: IndexedStack(index: _index, children: pages))),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),

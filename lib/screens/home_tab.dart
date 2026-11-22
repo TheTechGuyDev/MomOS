@@ -13,13 +13,17 @@ import 'achievements_screen.dart';
 import 'family/family_screen.dart';
 import 'memory/reminders_view.dart';
 import 'settings_screen.dart';
+import 'wellness/breathing_screen.dart';
+import '../meals/dishes.dart';
+import '../meals/meals_service.dart';
 import '../core/push.dart';
 import '../core/time_utils.dart';
 
 class HomeTab extends StatefulWidget {
   final Profile profile;
   final VoidCallback? onProfileChanged;
-  const HomeTab({super.key, required this.profile, this.onProfileChanged});
+  final ValueChanged<int>? onNavigate;
+  const HomeTab({super.key, required this.profile, this.onProfileChanged, this.onNavigate});
   @override
   State<HomeTab> createState() => _HomeTabState();
 }
@@ -30,6 +34,7 @@ class _HomeTabState extends State<HomeTab> {
   List<Profile> _members = [];
   List<AppBadge> _badges = [];
   Map<String, dynamic> _upcoming = const {};
+  List<Map<String, dynamic>> _suggestions = [];
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -60,6 +65,31 @@ class _HomeTabState extends State<HomeTab> {
       try {
         upcoming = Map<String, dynamic>.from(await supa.rpc('coming_up') as Map);
       } catch (_) {}
+      var suggestions = <Map<String, dynamic>>[];
+      try {
+        suggestions = List<Map<String, dynamic>>.from(
+            ((await supa.rpc('smart_suggestions')) as List).map((e) => Map<String, dynamic>.from(e as Map)));
+      } catch (_) {}
+      // Today's menu from the meal timetable
+      try {
+        final plan = await MealsService.load(MealsService.weekStart(DateTime.now()));
+        final today = plan?['${DateTime.now().weekday - 1}'];
+        if (today != null) {
+          final h = DateTime.now().hour;
+          final slot = h < 10 ? 'b' : (h < 15 ? 'l' : 'd');
+          final dish = dishByKey(today[slot] ?? '');
+          if (dish != null) {
+            suggestions.add({
+              'emoji': dish.emoji,
+              'title': "${slot == 'b' ? 'Breakfast' : slot == 'l' ? 'Lunch' : 'Dinner'}: ${dish.name}",
+              'why': 'From your meal plan · ${dish.minutes} min · tap for recipe',
+              'action': 'family:3',
+              'priority': 55,
+            });
+            suggestions.sort((a, b) => (b['priority'] as num).compareTo(a['priority'] as num));
+          }
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _stats = results[0] as GameStats;
@@ -67,6 +97,7 @@ class _HomeTabState extends State<HomeTab> {
         _badges = results[2] as List<AppBadge>;
         _members = members;
         _upcoming = upcoming;
+        _suggestions = suggestions;
         _loading = false;
         _error = null;
       });
@@ -108,6 +139,24 @@ class _HomeTabState extends State<HomeTab> {
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _runSuggestion(String action) async {
+    if (action.startsWith('tab:')) {
+      widget.onNavigate?.call(int.parse(action.substring(4)));
+    } else if (action == 'checkin') {
+      await _handleResult(GameService.checkIn);
+    } else if (action == 'breathing') {
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BreathingScreen()));
+      _load();
+    } else if (action.startsWith('family:')) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => FamilyScreen(initialTab: int.parse(action.substring(7))),
+      ));
+      _load();
+    } else if (action == 'quests') {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your quests are just below 👇')));
     }
   }
 
@@ -197,6 +246,10 @@ class _HomeTabState extends State<HomeTab> {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SettingsScreen(profile: p)));
                 setState(() {});
               }),
+            ],
+            if (_suggestions.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _NextForYou(items: _suggestions.take(4).toList(), onTap: _runSuggestion),
             ],
             const SizedBox(height: 14),
             _ComingUp(data: _upcoming, onAdd: () async {
@@ -525,7 +578,7 @@ class _FamilyCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Row(children: [
-            for (final (i, e, l) in [(0, '📅', 'Calendar'), (1, '🧺', 'Chores'), (2, '🛒', 'Shopping')]) ...[
+            for (final (i, e, l) in [(0, '📅', 'Calendar'), (1, '🧺', 'Chores'), (2, '🛒', 'Shopping'), (3, '🍲', 'Meals')]) ...[
               if (i > 0) const SizedBox(width: 8),
               Expanded(
                 child: Material(
@@ -660,6 +713,54 @@ class _ComingUp extends StatelessWidget {
             ]),
           );
         }),
+      ]),
+    );
+  }
+}
+
+
+class _NextForYou extends StatelessWidget {
+  final List<Map<String, dynamic>> items;
+  final ValueChanged<String> onTap;
+  const _NextForYou({required this.items, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [AppColors.mint.withValues(alpha: 0.16), AppColors.sky.withValues(alpha: 0.12)]),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text("What's next for you", style: t.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        Text('Based on your week', style: t.bodySmall?.copyWith(color: AppColors.muted)),
+        const SizedBox(height: 6),
+        ...items.map((s) => InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => onTap('${s['action']}'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                    child: Text('${s['emoji']}', style: const TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${s['title']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                      Text('${s['why']}', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+                    ]),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.muted),
+                ]),
+              ),
+            )),
       ]),
     );
   }

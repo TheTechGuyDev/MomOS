@@ -8,6 +8,7 @@ import '../../core/profile_service.dart';
 import '../../core/session.dart';
 import '../../core/theme.dart';
 import '../../core/time_utils.dart';
+import '../../meals/meals_screen.dart';
 import '../../widgets/ui.dart';
 
 class FamilyScreen extends StatefulWidget {
@@ -40,7 +41,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Family hub')),
-      floatingActionButton: _tab == 2
+      floatingActionButton: _tab >= 2
           ? null
           : FloatingActionButton(
               onPressed: () async {
@@ -63,6 +64,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 ButtonSegment(value: 0, label: Text('Calendar')),
                 ButtonSegment(value: 1, label: Text('Chores')),
                 ButtonSegment(value: 2, label: Text('Shopping')),
+                ButtonSegment(value: 3, label: Text('Meals')),
               ],
               selected: {_tab},
               onSelectionChanged: (s) => setState(() => _tab = s.first),
@@ -74,6 +76,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
             _CalendarView(key: _cal),
             _ChoresView(key: _chores, members: _members),
             const _ShoppingView(),
+            const MealsView(),
           ]),
         ),
       ]),
